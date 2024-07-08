@@ -190,6 +190,7 @@ int main(int argc, char** argv) {
       // time step delay.
       std::array<double, 7> tau_d_calculated;
       for (size_t i = 0; i < 7; i++) {
+        // change state.q_d[i]
         tau_d_calculated[i] =
             k_gains[i] * (state.q_d[i] - state.q[i]) - d_gains[i] * state.dq[i] + coriolis[i];
       }

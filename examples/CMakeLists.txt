@@ -39,6 +39,10 @@ set(EXAMPLES
   motion_with_control
   print_joint_poses
   vacuum_object
+  something
+  trajectory_recording
+  generate_infinite_sign
+  replay_trajectory
 )
 
 foreach(example ${EXAMPLES})
