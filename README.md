@@ -1,19 +1,13 @@
-# libfranka: C++ library for Franka Emika research robots
+## Introduction
+This project is part of the IMPL (Intelligent Manipulation and Planning Laboratory) course, specifically for Assignment 3. The main focus is on implementing impedance control for a Franka robot arm. Through this project, we explore the practical application of impedance control in robotic manipulation tasks and gain hands-on experience with the libfranka library.
+Features
 
-[![Build Status][travis-status]][travis]
-[![codecov][codecov-status]][codecov]
+## Implementation of impedance control for the Franka robot arm
+* Utilization of the libfranka library to execute specific robot commands
+* Analysis of impedance control performance in two key tasks:
+  1. Hand-guiding trajectory recording
+  2. Replay of the recorded hand-guided trajectory
+  3. Execution of a code-based designed trajectory
 
-With this library, you can control research versions of Franka Emika robots. See the [Franka Control Interface (FCI) documentation][fci-docs] for more information about what `libfranka` can do and how to set it up. The [generated API documentation][api-docs] also gives an overview of its capabilities.
-
-## License
-
-`libfranka` is licensed under the [Apache 2.0 license][apache-2.0].
-
-[apache-2.0]: https://www.apache.org/licenses/LICENSE-2.0.html
-[api-docs]: https://frankaemika.github.io/libfranka
-[fci-docs]: https://frankaemika.github.io/docs
-[travis-status]: https://travis-ci.org/frankaemika/libfranka.svg?branch=master
-[travis]: https://travis-ci.org/frankaemika/libfranka
-[codecov-status]: https://codecov.io/gh/frankaemika/libfranka/branch/master/graph/badge.svg
-[codecov]: https://codecov.io/gh/frankaemika/libfranka
-# libfranka
+## Code Location
+All code for Assignment 3 is located in the libfranka/examples directory. This directory contains the necessary examples and implementations for the impedance control tasks.
