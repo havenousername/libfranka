@@ -20,6 +20,10 @@ add_library(examples_common STATIC
   examples_common.cpp
 )
 
+add_library(json_utils STATIC
+        json_utils.cpp
+)
+
 target_link_libraries(examples_common PUBLIC Franka::Franka Eigen3::Eigen3)
 
 set(EXAMPLES
@@ -49,6 +53,7 @@ set(EXAMPLES
 foreach(example ${EXAMPLES})
   add_executable(${example} ${example}.cpp)
   target_link_libraries(${example} Franka::Franka examples_common Eigen3::Eigen3)
+  target_link_libraries(${example} json_utils)
 endforeach()
 
 target_link_libraries(joint_impedance_control Threads::Threads)

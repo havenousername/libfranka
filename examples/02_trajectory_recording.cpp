@@ -9,6 +9,7 @@
 #include <array>
 #include <chrono>
 #include <fstream>
+#include "json_utils.h"
 
 // types for the recording
 /**
@@ -20,62 +21,6 @@ using PosTuple = std::tuple<std::array<double, 16>, std::array<double, 7>>;
  * State of the recording
  */
 enum State {INIT, END};
-
-/**
- * transform PosTuple type to the json string
- * @param vec
- * @return
- */
-std::string toJson(const std::vector<PosTuple>& vec) {
-  std::string json = "[";
-  for (size_t i = 0; i < vec.size(); ++i) {
-    const auto& arr1 = std::get<0>(vec[i]);
-    const auto& arr2 = std::get<1>(vec[i]);
-
-    json += "{";
-    json += "\"O_T_EE\":[";
-    for (size_t j = 0; j < arr1.size(); ++j) {
-      json += std::to_string(arr1[j]);
-      if (j < arr1.size() - 1) {
-        json += ",";
-      }
-    }
-    json += "],";
-
-    json += "\"q\":[";
-    for (size_t j = 0; j < arr2.size(); ++j) {
-      json += std::to_string(arr2[j]);
-      if (j < arr2.size() - 1) {
-        json += ",";
-      }
-    }
-    json += "]";
-
-    json += "}";
-    if (i < vec.size() - 1) {
-      json += ",";
-    }
-  }
-  json += "]";
-  return json;
-};
-
-
-/**
- * Write string to the file
- * @param filename
- * @param data
- */
-void writeToFile(const std::string& filename, const std::string& data) {
-  std::ofstream file(filename);
-  if (file.is_open()) {
-    std::cout << "Write to the file " << filename << std::endl;
-    file << data;
-    file.close();
-  } else {
-    std::cerr << "Unable to open file";
-  }
-}
 
 
 int main(int argc, char** argv) {
@@ -161,6 +106,12 @@ int main(int argc, char** argv) {
       std::string json = toJson(trajectory);
       writeToFile("output.json", json);
       std::cout << "Here is the recording size " << trajectory.size() << std::endl;
+
+      // Control loop for free hand guiding
+      robot.control([](const franka::RobotState&, franka::Duration) -> franka::Torques {
+        // Return zero torques to allow free movement
+        return std::array<double, 7>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
+      });
   } catch (const franka::Exception& ex) {
     // Print exception
     std::cout << ex.what() << std::endl;
