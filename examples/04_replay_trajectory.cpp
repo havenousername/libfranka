@@ -161,7 +161,6 @@ std::vector<PosTuple> parseJson(const std::string& json) {
         while (json[pos] != '}' && json[pos] != '"') ++pos;
       }
 
-#include "examples_common.h"
       if (found_O_T_EE && found_q) {
         result.emplace_back(O_T_EE, q);
       }
@@ -173,19 +172,18 @@ std::vector<PosTuple> parseJson(const std::string& json) {
 }
 
 
+constexpr std:string input_file = "output.json";
+constexpr std::string out_file = "output-6.json";
+
+
 int main(int argc, char** argv) {
-//   std::string json = R"([{"O_T_EE":[1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.1, 0.2, 0.3, 1.0],"q":[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]},{"O_T_EE":[1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.4, 0.5, 0.6, 1.0],"q":[0.7, 0.6, 0.5, 0.4, 0.3, 0.2, 0.1]}])";
-
     try {
-        std::string filename = "output.json"; 
-        std::string json = readFileToString(filename);
-        
-
+        std::string json = readFileToString(input_file);
         try {
             std::vector<PosTuple> trajectoryVec = parseJson(json);
             std::queue<PosTuple> trajectoryQ;
 
-            // Compliance parameters
+            // Compliance parameters, set up impedance controller
             const double translational_stiffness{150.0};
             const double rotational_stiffness{10.0};
             Eigen::MatrixXd stiffness(6, 6), damping(6, 6);
@@ -198,12 +196,15 @@ int main(int argc, char** argv) {
             damping.bottomRightCorner(3, 3) << 2.0 * sqrt(rotational_stiffness) *
                                                     Eigen::MatrixXd::Identity(3, 3);
 
+            // transform vector to the queue (to pop from top to bottom movements)
             for (auto v : trajectoryVec) {
                 trajectoryQ.push(v);
             }
 
+            // initialize robot
             franka::Robot robot(argv[1]);
             setDefaultBehavior(robot);
+
             // Set high collision thresholds to enable hand guiding
             std::array<double, 7> q_goal = {{0, -M_PI_4, 0, -3 * M_PI_4, 0, M_PI_2, M_PI_4}};
             MotionGenerator motion_generator(0.5, q_goal);
@@ -237,8 +238,9 @@ int main(int argc, char** argv) {
 
             // define callback for the torque control loop
             std::function<franka::Torques(const franka::RobotState&, franka::Duration)>
-                impedance_control_callback = [&](const franka::RobotState& robot_state,
-                                                franka::Duration /*duration*/) -> franka::Torques {
+                impedance_control_callback = [&](
+                                                 const franka::RobotState& robot_state,
+                                                 franka::Duration) -> franka::Torques {
                 PosTuple posTuple = std::make_tuple(robot_state.O_T_EE, robot_state.q);
                 trajectory.push_back(posTuple);
                 Eigen::Map<Eigen::Matrix4d> desired_input(std::get<0>(trajectoryQ.front()).data());
@@ -249,7 +251,7 @@ int main(int argc, char** argv) {
                     trajectoryQ.pop();
                 } else if (!hasEntered) {
                     std::string json = toJson(trajectory);
-                    writeToFile("output-6.json", json);
+                    writeToFile(out_file, json);
                     hasEntered = true;
                 }
 
@@ -269,22 +271,7 @@ int main(int argc, char** argv) {
                 Eigen::Map<const Eigen::Matrix<double, 7, 1>> dq(robot_state.dq.data());
 
                 Eigen::Affine3d transform;
-                // transform affine 3d
-                // if (!trajectoryQ.empty()) {
-                //     transform = Eigen::Matrix4d::Map(std::get<0>(trajectoryQ.front()).data());
-                //     double scalar = 1.0;
-
-                //     Eigen::Matrix4d transform = scalar * transform;
-                //     trajectoryQ.pop();
-                // } else {
-                //     if (!hasEntered) {
-                //         std::string json = toJson(trajectory);
-                //         writeToFile("output-6.json", json);
-                //     }
-                //     hasEntered = true;
                 transform = Eigen::Matrix4d::Map(robot_state.O_T_EE.data());
-                
-                // }
                 Eigen::Vector3d position(transform.translation());
                 Eigen::Quaterniond orientation(transform.rotation());
 
@@ -315,7 +302,6 @@ int main(int argc, char** argv) {
                 Eigen::VectorXd::Map(&tau_d_array[0], 7) = tau_d;
                 return tau_d_array;
             };
-
             
 
             // start real-time control loop
@@ -325,52 +311,6 @@ int main(int argc, char** argv) {
                     << "Press Enter to continue..." << std::endl;
             std::cin.ignore();
             robot.control(impedance_control_callback);
-            
-            // robot.control([&trajectoryQ, &hasEntered, &trajectory, &robot](const franka::RobotState& robot_state, franka::Duration) -> franka::CartesianPose {
-            //     PosTuple posTuple = std::make_tuple(robot_state.O_T_EE, robot_state.q);
-            //     trajectory.push_back(posTuple);
-
-
-            //     if (trajectoryQ.empty()) {
-            //         std::cout << std::endl << "Free movement" << std::endl;
-            //        if (!hasEntered) {
-            //         std::string json = toJson(trajectory);
-            //         writeToFile("output-5.json", json);
-            //        }
-
-            //        hasEntered = true;
-            //        return franka::MotionFinished(robot_state.O_T_EE_c);
-            //         // return std::array<double, 7>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-            //     //    return std::array<double, 7>{0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0};
-            //     }
-                
-            //     auto movement = std::get<0>(trajectoryQ.front()); 
-            //     std::cout << "\nq: ";
-            //     for (const auto& val : movement) {
-            //         std::cout << val << " ";
-            //     }
-            //     std::cout << std::endl;
-
-            //     std::cout << "Size of the vector " << trajectoryQ.size() << std::endl;
-            //     trajectoryQ.pop();                
-            //     return movement;
-            // });
-
-
-            // for (const auto& tuple : vec) {
-            //     const auto& O_T_EE = std::get<0>(tuple);
-            //     const auto& q = std::get<1>(tuple);
-
-            //     std::cout << "O_T_EE: ";
-            //     for (const auto& val : O_T_EE) {
-            //         std::cout << val << " ";
-            //     }
-            //     std::cout << "\nq: ";
-            //     for (const auto& val : q) {
-            //         std::cout << val << " ";
-            //     }
-            //     std::cout << std::endl;
-            // }
         } catch (const std::exception& e) {
             std::cerr << "Error parsing JSON: " << e.what() << std::endl;
         }

@@ -39,9 +39,10 @@ set(EXAMPLES
   motion_with_control
   print_joint_poses
   vacuum_object
-  something
-  trajectory_recording
-  generate_infinite_sign
+  01_something
+  02_trajectory_recording
+  03_generate_infinite_sign
+  04_replay_trajectory
   replay_trajectory
 )
 

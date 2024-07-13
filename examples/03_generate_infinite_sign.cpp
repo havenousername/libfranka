@@ -5,16 +5,26 @@
 
 #include <franka/exception.h>
 #include <franka/robot.h>
-
 #include "examples_common.h"
+#include <vector>
+#include <string>
+#include <tuple>
+#include <array>
+#include <chrono>
+#include <fstream>
 
-#define PI 3.1415926535897932384626
+enum MotionStrategy {
+  // use sin to generate motion
+  SIN_BASED,
+  // use cos to generate motion
+  COS_BASED
+};
+
+#define PI_2 180
 
 /**
- * @example generate_cartesian_pose_motion.cpp
- * An example showing how to generate a Cartesian motion.
- *
- * @warning Before executing this example, make sure there is enough space in front of the robot.
+ * Generating infinite sign trajectory infinitely (until timeframe t)
+ * @warning Please specify the robot hostname before running the program
  */
 
 int main(int argc, char** argv) {
@@ -22,7 +32,9 @@ int main(int argc, char** argv) {
     std::cerr << "Usage: " << argv[0] << " <robot-hostname>" << std::endl;
     return -1;
   }
+
   try {
+    // Initialize robot
     franka::Robot robot(argv[1]);
     setDefaultBehavior(robot);
 
@@ -44,45 +56,48 @@ int main(int argc, char** argv) {
         {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}}, {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}},
         {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}}, {{20.0, 20.0, 20.0, 25.0, 25.0, 25.0}});
 
+    // Initialise variables
     std::array<double, 16> initial_pose;
     double time = 0.0;
     double angle = 0.0;
-    double angle_step = 0.001;
-    robot.control([&time, &initial_pose, &angle](const franka::RobotState& robot_state,
-                                         franka::Duration period) -> franka::CartesianPose {
-      time += period.toSec();
-      constexpr double kRadius = 0.1;
-      // double angle = M_PI / 4 * (1 - std::cos(M_PI / 5.0 * time));
-      // double delta_x = kRadius * std::sin(angle);
-      // double delta_z = kRadius * (std::cos(angle) - 1);
+    constexpr double kRadius = 0.04;
+    const double end_time = 36.0d;
+    MotionStrategy strategy = SIN_BASED;
 
+    // period of motion for the sin movement
+    constexpr double period_x = 20.0d;
+    constexpr double period_y = 40.0d;
+
+    constexpr double angle_thickness = 10.0d;
+
+    // control loop callback
+    robot.control([&](
+                      const franka::RobotState& robot_state,
+                      franka::Duration period) -> franka::CartesianPose {
+      time += period.toSec();
       if (time == 0.0) {
         initial_pose = robot_state.O_T_EE_c;
       }
 
-
       std::array<double, 16> new_pose = initial_pose;
-      // new_pose[12] += delta_x;
-      // new_pose[14] += delta_z;
-      angle = M_PI * (1 - std::cos(M_PI / 10.0 * time));
 
-      //angle = M_PI * (time - std::sin(M_PI / .0 * time) / (M_PI / (5.0 * time)));
-      //double radAngle = angle * PI / 180;
-      // double angle = M_PI / 4 * (std::sin(M_PI / 5.0 * time));
-      //double angle = M_PI / 4 * (1 - std::cos(M_PI / 5.0 * time));
-      new_pose[12] = kRadius * std::sin(angle) + initial_pose[12];
-      new_pose[13] = kRadius * std::sin(2 * angle) + initial_pose[13];
+      // sinus based movement, a repeating cycling movement which results in a infinite shape
+      if (strategy === SIN_BASED) {
+        double delta_x = kRadius * std::sin(period_x * time*M_PI/PI_2) + initial_pose[12];
+        double delta_y = kRadius * (std::sin(period_y * time*M_PI/PI_2)) + initial_pose[13];
 
-      // double delta_x = kRadius * std::sin(angle);
-      // double delta_y = kRadius * (std::sin(2*angle));
+        new_pose[12] = delta_x;
+        new_pose[13] = delta_y;
+      // alternative cos movement, taken as an inspiration from generate_cartesian_pose_motion.cpp file
+      } else if (strategy === COS_BASED) {
+        angle = M_PI * (1 - std::cos(MPI / angle_thickness * time));
 
-      //double delta_x = kRadius * std::sin(25 * time*M_PI/180) + new_pose[12];
-      //double delta_y = kRadius * (std::sin(50 * time*M_PI/180)) + new_pose[13];
+        new_pose[12] = kRadius * std::sin(angle) + initial_pose[12];
+        new_pose[13] = kRadius * std::sin(2 * angle) + initial_pose[13];
+      }
 
-      //new_pose[12] = delta_x;
-      //new_pose[13] = delta_y;
-
-      if (time >= 40.0) {
+      // if time has ended finish movement
+      if (time >= end_time) {
         std::cout << std::endl << "Finished motion, shutting down example" << std::endl;
         return franka::MotionFinished(new_pose);
       }
